@@ -19,30 +19,34 @@ record WorkerWorkspaces(Path runRoot, List<Path> workerRoots) implements AutoClo
         if (!Files.exists(runRoot)) {
             return;
         }
-        IOException failure = deleteWithRetries(runRoot);
+        IOException failure = deleteWithRetries(runRoot, WorkerWorkspaces::tryDelete, WorkerWorkspaces::sleepBeforeRetry);
         if (failure != null) {
             throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, failure);
         }
     }
 
-    private static IOException deleteWithRetries(Path runRoot) {
+    static IOException deleteWithRetries(Path runRoot, DeleteAttempt deleteAttempt, RetrySleeper retrySleeper) {
         IOException failure = null;
         for (int attempt = 1; attempt <= DELETE_RETRIES; attempt++) {
-            failure = tryDelete(runRoot);
+            failure = deleteAttempt.tryDelete(runRoot);
             if (failure == null) {
                 return null;
             }
             if (!(failure instanceof DirectoryNotEmptyException)) {
                 throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, failure);
             }
-            sleepBeforeRetry();
+            retrySleeper.sleep();
         }
         return failure;
     }
 
-    private static IOException tryDelete(Path runRoot) {
+    static IOException tryDelete(Path runRoot) {
+        return tryDelete(runRoot, WorkerWorkspaces::deleteTree);
+    }
+
+    static IOException tryDelete(Path runRoot, DeleteTree deleteTree) {
         try {
-            deleteTree(runRoot);
+            deleteTree.delete(runRoot);
             return null;
         } catch (IOException ex) {
             return ex;
@@ -75,5 +79,20 @@ record WorkerWorkspaces(Path runRoot, List<Path> workerRoots) implements AutoClo
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while deleting worker workspace", ex);
         }
+    }
+
+    @FunctionalInterface
+    interface DeleteAttempt {
+        IOException tryDelete(Path runRoot);
+    }
+
+    @FunctionalInterface
+    interface RetrySleeper {
+        void sleep();
+    }
+
+    @FunctionalInterface
+    interface DeleteTree {
+        void delete(Path runRoot) throws IOException;
     }
 }

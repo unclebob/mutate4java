@@ -3,12 +3,17 @@ package mutate4java;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class WorkerWorkspacesTest {
 
@@ -33,5 +38,38 @@ class WorkerWorkspacesTest {
         workspaces.close();
 
         assertFalse(Files.exists(runRoot));
+    }
+
+    @Test
+    void deleteWithRetriesThrowsForNonRetryableFailure() {
+        IOException failure = new IOException("boom");
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> WorkerWorkspaces.deleteWithRetries(tempDir, path -> failure, () -> {
+                }));
+
+        assertSame(failure, thrown.getCause());
+    }
+
+    @Test
+    void deleteWithRetriesReturnsLastDirectoryNotEmptyFailureAfterRetryLimit() {
+        DirectoryNotEmptyException failure = new DirectoryNotEmptyException("busy");
+        AtomicInteger sleeps = new AtomicInteger();
+
+        IOException result = WorkerWorkspaces.deleteWithRetries(tempDir, path -> failure, sleeps::incrementAndGet);
+
+        assertSame(failure, result);
+        assertSame(5, sleeps.get());
+    }
+
+    @Test
+    void tryDeleteReturnsIOExceptionFromDeleteTree() throws Exception {
+        IOException failure = new IOException("boom");
+
+        IOException result = WorkerWorkspaces.tryDelete(tempDir, path -> {
+            throw failure;
+        });
+
+        assertSame(failure, result);
     }
 }

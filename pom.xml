@@ -42,6 +42,7 @@
             <include>**/*Test.java</include>
           </includes>
           <excludes>
+            <exclude>**/*IT.java</exclude>
             <exclude>**/*AcceptanceTest.java</exclude>
           </excludes>
         </configuration>
@@ -58,6 +59,7 @@
             </goals>
             <configuration>
               <includes>
+                <include>**/*IT.java</include>
                 <include>**/*AcceptanceTest.java</include>
               </includes>
             </configuration>

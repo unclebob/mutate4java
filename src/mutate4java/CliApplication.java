@@ -75,14 +75,13 @@ final class CliApplication {
         CliArguments parsed = parse.arguments;
 
         List<Path> files = filesForMode(parsed);
-        if (files.isEmpty()) {
-            out.println("No Java files to mutate.");
-            return 0;
-        }
         Path moduleRoot = moduleRootFor(files);
+        ProgressReporter progressReporter = parsed.verbose() ? verboseProgressReporter : new NoOpProgressReporter();
 
+        progressReporter.baselineStarting(moduleRoot);
         CoverageRun coverageRun = coverageRunner.generateCoverage(moduleRoot);
         TestRun baseline = coverageRun.baseline();
+        progressReporter.baselineFinished(baseline);
         if (!baseline.passed()) {
             if (baseline.timedOut()) {
                 err.println("Baseline tests timed out.");
@@ -106,7 +105,7 @@ final class CliApplication {
                 selection.covered(),
                 timeoutMillis,
                 parsed.maxWorkers(),
-                parsed.verbose()
+                progressReporter
         );
         out.print(formatter.format(workspaceRoot, baseline, selection.uncovered(), results));
         return results.stream().anyMatch(result -> !result.killed()) ? 3 : 0;
@@ -128,24 +127,20 @@ final class CliApplication {
     }
 
     private List<Path> filesForMode(CliArguments parsed) throws Exception {
-        return switch (parsed.mode()) {
-            case EXPLICIT_FILES -> List.of(explicitFile(parsed.fileArgs().get(0)));
-            case HELP -> List.of();
-        };
+        return List.of(explicitFile(parsed.fileArgs().get(0)));
     }
 
     private List<MutationResult> runMutations(Path moduleRoot,
                                               List<MutationSite> sites,
                                               long timeoutMillis,
                                               int maxWorkers,
-                                              boolean verbose) throws Exception {
+                                              ProgressReporter progressReporter) throws Exception {
         List<MutationJob> jobs = new ArrayList<>();
         for (int i = 0; i < sites.size(); i++) {
             MutationSite site = sites.get(i);
             jobs.add(new MutationJob(site, moduleRoot.relativize(site.file()), timeoutMillis, i, sites.size()));
         }
         int workerCount = Math.max(1, Math.min(jobs.size(), maxWorkers));
-        ProgressReporter progressReporter = verbose ? verboseProgressReporter : new NoOpProgressReporter();
         try (WorkerWorkspaces workspaces = workspaceManager.createWorkerWorkspaces(moduleRoot, workerCount);
              WorkerPool pool = new ParallelWorkerPool(workspaces.workerRoots(), executor, progressReporter)) {
             return pool.runAll(jobs);
@@ -179,7 +174,7 @@ final class CliApplication {
         return new CoverageSelection(List.copyOf(covered), List.copyOf(uncovered));
     }
 
-    private String sourceSuffix(Path moduleRoot, Path file) {
+    String sourceSuffix(Path moduleRoot, Path file) {
         String relative = moduleRoot.relativize(file).toString().replace('\\', '/');
         String prefix = "src/";
         int separator = relative.indexOf('/');
@@ -197,19 +192,8 @@ final class CliApplication {
         return path;
     }
 
-    private Path moduleRootFor(List<Path> files) {
-        Path moduleRoot = null;
-        for (Path file : files) {
-            Path current = findModuleRoot(file);
-            if (current == null) {
-                current = workspaceRoot;
-            }
-            if (moduleRoot == null) {
-                moduleRoot = current;
-            } else if (!moduleRoot.equals(current)) {
-                throw new IllegalArgumentException("All targets must be in the same Maven module");
-            }
-        }
+    Path moduleRootFor(List<Path> files) {
+        Path moduleRoot = findModuleRoot(files.get(0));
         return moduleRoot == null ? workspaceRoot : moduleRoot;
     }
 

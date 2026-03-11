@@ -2,6 +2,7 @@ package mutate4java;
 
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.function.IntConsumer;
 
 public final class Main {
 
@@ -10,9 +11,7 @@ public final class Main {
 
     public static void main(String[] args) throws Exception {
         int exit = run(args, Path.of(".").toAbsolutePath().normalize(), System.out, System.err);
-        if (exit != 0) {
-            System.exit(exit);
-        }
+        exitIfNeeded(exit, System::exit);
     }
 
     static int run(String[] args, Path projectRoot, PrintStream out, PrintStream err) throws Exception {
@@ -37,5 +36,11 @@ public final class Main {
                   mutate4java <file.java> --verbose           Print live worker progress
                   mutate4java --help                          Print this help message
                 """;
+    }
+
+    static void exitIfNeeded(int exit, IntConsumer exiter) {
+        if (exit != 0) {
+            exiter.accept(exit);
+        }
     }
 }

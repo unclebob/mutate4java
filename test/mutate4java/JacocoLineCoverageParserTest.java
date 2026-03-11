@@ -33,4 +33,22 @@ class JacocoLineCoverageParserTest {
         assertTrue(report.covers("demo/Sample.java", 5));
         assertFalse(report.covers("demo/Sample.java", 9));
     }
+
+    @Test
+    void ignoresLinesWithMalformedCoverageNumbers() throws Exception {
+        Path xml = tempDir.resolve("jacoco-invalid.xml");
+        Files.writeString(xml, """
+                <report name="demo">
+                  <package name="demo">
+                    <sourcefile name="Sample.java">
+                      <line nr="oops" mi="0" ci="nan"/>
+                    </sourcefile>
+                  </package>
+                </report>
+                """);
+
+        CoverageReport report = JacocoLineCoverageParser.parse(xml);
+
+        assertFalse(report.covers("demo/Sample.java", 0));
+    }
 }

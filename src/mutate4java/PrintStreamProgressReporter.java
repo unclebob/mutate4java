@@ -1,6 +1,7 @@
 package mutate4java;
 
 import java.io.PrintStream;
+import java.nio.file.Path;
 
 final class PrintStreamProgressReporter implements ProgressReporter {
 
@@ -8,6 +9,19 @@ final class PrintStreamProgressReporter implements ProgressReporter {
 
     PrintStreamProgressReporter(PrintStream out) {
         this.out = out;
+    }
+
+    @Override
+    public synchronized void baselineStarting(Path moduleRoot) {
+        out.printf("Baseline starting for %s%n", moduleRoot);
+    }
+
+    @Override
+    public synchronized void baselineFinished(TestRun baseline) {
+        out.printf("Baseline finished: exit=%d timedOut=%s duration=%d ms%n",
+                baseline.exitCode(),
+                baseline.timedOut(),
+                baseline.durationMillis());
     }
 
     @Override

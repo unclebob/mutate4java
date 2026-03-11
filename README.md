@@ -131,5 +131,8 @@ From the repository root:
 
 ```bash
 mvn -pl tools/mutate4java test
+mvn -pl tools/mutate4java verify
 mvn -pl tools/mutate4java package
 ```
+
+`mvn test` runs the fast unit suite. `mvn verify` also runs the Maven-spawning integration tests that exercise coverage generation and real `mvn test` execution against temporary sample projects.

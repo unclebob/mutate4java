@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -42,9 +43,36 @@ class CliApplicationTest {
         ).execute(new String[]{relative(file), "--verbose"});
 
         assertEquals(0, exit);
+        assertTrue(progress.toString().contains("Baseline starting for"));
+        assertTrue(progress.toString().contains("Baseline finished: exit=0 timedOut=false duration=10 ms"));
         assertTrue(progress.toString().contains("Running 1 mutations with 1 workers."));
         assertTrue(progress.toString().contains("Worker 1 starting 1/1:"));
         assertTrue(progress.toString().contains("Worker 1 finished 1/1: KILLED"));
+    }
+
+    @Test
+    void printsHelpAndExitsZero() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = application(out, err, new StubExecutor(), new StubCoverageRunner(new CoverageReport(Set.of())))
+                .execute(new String[]{"--help"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Usage:"));
+    }
+
+    @Test
+    void printsUsageForInvalidArgumentsAndExitsOne() throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = application(out, err, new StubExecutor(), new StubCoverageRunner(new CoverageReport(Set.of())))
+                .execute(new String[]{"bogus"});
+
+        assertEquals(1, exit);
+        assertTrue(out.toString().contains("Usage:"));
+        assertTrue(err.toString().contains("mutate4java target must be a .java file"));
     }
 
     @Test
@@ -106,6 +134,21 @@ class CliApplicationTest {
 
         assertEquals(0, exit);
         assertEquals(originalSource(), Files.readString(file));
+    }
+
+    @Test
+    void returnsZeroWhenAllDiscoveredSitesAreUncovered() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of()));
+        StubExecutor executor = new StubExecutor();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file)});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Coverage: 2 uncovered sites skipped."));
+        assertEquals(0, executor.invocations.get());
     }
 
     @Test
@@ -187,6 +230,45 @@ class CliApplicationTest {
         assertTrue(out.toString().contains("Summary: 2 killed, 0 survived, 2 total."));
         assertEquals(2, executor.invocations.get());
         assertEquals(originalSource(), Files.readString(file));
+    }
+
+    @Test
+    void usesWorkspaceRootWhenNoPomExistsAboveTargetFile() throws Exception {
+        Path file = writeSourceFile();
+
+        Path moduleRoot = application(new ByteArrayOutputStream(), new ByteArrayOutputStream(),
+                new StubExecutor(), new StubCoverageRunner(new CoverageReport(Set.of())))
+                .moduleRootFor(List.of(file));
+
+        assertEquals(tempDir, moduleRoot);
+    }
+
+    @Test
+    void findsNearestPomAsModuleRoot() throws Exception {
+        Path moduleRoot = tempDir.resolve("tools/mutate4java");
+        Path file = moduleRoot.resolve("src/mutate4java/Sample.java");
+        Files.createDirectories(file.getParent());
+        Files.writeString(moduleRoot.resolve("pom.xml"), "<project/>");
+        Files.writeString(file, originalSource());
+
+        Path resolved = application(new ByteArrayOutputStream(), new ByteArrayOutputStream(),
+                new StubExecutor(), new StubCoverageRunner(new CoverageReport(Set.of())))
+                .moduleRootFor(List.of(file));
+
+        assertEquals(moduleRoot, resolved);
+    }
+
+    @Test
+    void keepsRelativeSourcePathWhenFileIsOutsideSrcTree() throws Exception {
+        Path file = tempDir.resolve("demo/Sample.java");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, originalSource());
+
+        String suffix = application(new ByteArrayOutputStream(), new ByteArrayOutputStream(),
+                new StubExecutor(), new StubCoverageRunner(new CoverageReport(Set.of())))
+                .sourceSuffix(tempDir, file);
+
+        assertEquals("demo/Sample.java", suffix);
     }
 
     private Path writeSourceFile() throws Exception {
@@ -289,6 +371,14 @@ class CliApplicationTest {
     }
 
     private static final class NoOpProgressReporter implements ProgressReporter {
+
+        @Override
+        public void baselineStarting(Path moduleRoot) {
+        }
+
+        @Override
+        public void baselineFinished(TestRun baseline) {
+        }
 
         @Override
         public void runStarting(int totalMutations, int workerCount) {

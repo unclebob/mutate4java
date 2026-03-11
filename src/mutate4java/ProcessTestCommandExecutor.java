@@ -2,14 +2,29 @@ package mutate4java;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 final class ProcessTestCommandExecutor implements TestCommandExecutor {
 
+    private final ProcessLauncher launcher;
+
+    ProcessTestCommandExecutor() {
+        this(List.of("mvn", "test"));
+    }
+
+    ProcessTestCommandExecutor(List<String> command) {
+        this(projectRoot -> startProcess(projectRoot, command));
+    }
+
+    ProcessTestCommandExecutor(ProcessLauncher launcher) {
+        this.launcher = launcher;
+    }
+
     @Override
     public TestRun runTests(Path projectRoot, long timeoutMillis) throws IOException, InterruptedException {
         long start = System.nanoTime();
-        Process process = startProcess(projectRoot);
+        Process process = launcher.start(projectRoot);
         boolean timedOut = !waitFor(process, timeoutMillis);
         int exitCode = exitCode(process, timedOut);
         long durationMillis = (System.nanoTime() - start) / 1_000_000L;
@@ -17,8 +32,8 @@ final class ProcessTestCommandExecutor implements TestCommandExecutor {
         return new TestRun(exitCode, output, durationMillis, timedOut);
     }
 
-    private Process startProcess(Path projectRoot) throws IOException {
-        return new ProcessBuilder("mvn", "test")
+    private static Process startProcess(Path projectRoot, List<String> command) throws IOException {
+        return new ProcessBuilder(command)
                 .directory(projectRoot.toFile())
                 .redirectErrorStream(true)
                 .start();
@@ -47,5 +62,9 @@ final class ProcessTestCommandExecutor implements TestCommandExecutor {
         } catch (IOException ex) {
             return "";
         }
+    }
+
+    interface ProcessLauncher {
+        Process start(Path projectRoot) throws IOException;
     }
 }

@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class CoverageRunnerTest {
+class CoverageRunnerIT {
 
     @Test
     void deletesStaleCoverageArtifactsBeforeRunningCoverage() throws Exception {
