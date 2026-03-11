@@ -1,0 +1,305 @@
+package mutate4java;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class CliApplicationTest {
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void reportsMutationProgress() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false)
+        );
+        ByteArrayOutputStream progress = new ByteArrayOutputStream();
+
+        int exit = new CliApplication(
+                tempDir,
+                new PrintStream(new ByteArrayOutputStream()),
+                new PrintStream(new ByteArrayOutputStream()),
+                executor,
+                coverageRunner,
+                new CopiedWorkspaceManager(),
+                new PrintStreamProgressReporter(new PrintStream(progress))
+        ).execute(new String[]{relative(file), "--verbose"});
+
+        assertEquals(0, exit);
+        assertTrue(progress.toString().contains("Running 1 mutations with 1 workers."));
+        assertTrue(progress.toString().contains("Worker 1 starting 1/1:"));
+        assertTrue(progress.toString().contains("Worker 1 finished 1/1: KILLED"));
+    }
+
+    @Test
+    void stopsWhenBaselineTestsFail() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(
+                new TestRun(1, "failing baseline", 10, false),
+                new CoverageReport(Set.of())
+        );
+        StubExecutor executor = new StubExecutor();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = application(out, err, executor, coverageRunner)
+                .execute(new String[]{relative(file)});
+
+        assertEquals(2, exit);
+        assertTrue(err.toString().contains("Baseline tests failed."));
+        assertEquals(originalSource(), Files.readString(file));
+        assertEquals(0, executor.invocations.get());
+    }
+
+    @Test
+    void returnsNonZeroWhenAnyMutationSurvives() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5),
+                new CoverageSite("main/java/demo/Sample.java", 9)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false),
+                new TestRun(0, "survived", 6, false)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file)});
+
+        assertEquals(3, exit);
+        assertTrue(out.toString().contains("KILLED"));
+        assertTrue(out.toString().contains("SURVIVED"));
+        assertEquals(originalSource(), Files.readString(file));
+    }
+
+    @Test
+    void returnsZeroWhenAllMutationsAreKilled() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5),
+                new CoverageSite("main/java/demo/Sample.java", 9)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false),
+                new TestRun(1, "killed", 6, false)
+        );
+
+        int exit = application(new ByteArrayOutputStream(), new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file)});
+
+        assertEquals(0, exit);
+        assertEquals(originalSource(), Files.readString(file));
+    }
+
+    @Test
+    void filtersMutationsByRequestedLines() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file), "--lines", "5"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Summary: 1 killed, 0 survived, 1 total."));
+        assertEquals(1, executor.invocations.get());
+        assertEquals(1000L, executor.timeouts.remove());
+    }
+
+    @Test
+    void countsTimedOutMutantsAsKilled() throws Exception {
+        Path file = writeUnarySourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Guard.java", 5)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(124, "timed out mutant", 1000, true)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file), "--lines", "5"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("timed out"));
+        assertEquals(unarySource(), Files.readString(file));
+    }
+
+    @Test
+    void reportsUncoveredSitesAndSkipsThem() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file)});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("UNCOVERED src/main/java/demo/Sample.java:9 replace == with !="));
+        assertTrue(out.toString().contains("Coverage: 1 uncovered sites skipped."));
+        assertEquals(1, executor.invocations.get());
+    }
+
+    @Test
+    void acceptsMaxWorkersDuringMutationRun() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("main/java/demo/Sample.java", 5),
+                new CoverageSite("main/java/demo/Sample.java", 9)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false),
+                new TestRun(1, "killed", 6, false)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file), "--max-workers", "2"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Summary: 2 killed, 0 survived, 2 total."));
+        assertEquals(2, executor.invocations.get());
+        assertEquals(originalSource(), Files.readString(file));
+    }
+
+    private Path writeSourceFile() throws Exception {
+        Path file = tempDir.resolve("src/main/java/demo/Sample.java");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, originalSource());
+        return file;
+    }
+
+    private Path writeUnarySourceFile() throws Exception {
+        Path file = tempDir.resolve("src/main/java/demo/Guard.java");
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, unarySource());
+        return file;
+    }
+
+    private String relative(Path file) {
+        return tempDir.relativize(file).toString();
+    }
+
+    private String originalSource() {
+        return """
+                package demo;
+
+                class Sample {
+                    boolean truthy() {
+                        return true;
+                    }
+
+                    boolean same(int left, int right) {
+                        return left == right;
+                    }
+                }
+                """;
+    }
+
+    private String unarySource() {
+        return """
+                package demo;
+
+                class Guard {
+                    boolean allows(boolean blocked) {
+                        return !blocked;
+                    }
+                }
+                """;
+    }
+
+    private CliApplication application(ByteArrayOutputStream out,
+                                       ByteArrayOutputStream err,
+                                       StubExecutor executor,
+                                       StubCoverageRunner coverageRunner) {
+        return new CliApplication(
+                tempDir,
+                new PrintStream(out),
+                new PrintStream(err),
+                executor,
+                coverageRunner,
+                new CopiedWorkspaceManager(),
+                new NoOpProgressReporter()
+        );
+    }
+
+    private static final class StubExecutor implements TestCommandExecutor {
+        private final Queue<TestRun> runs = new ConcurrentLinkedQueue<>();
+        private final Queue<Long> timeouts = new ConcurrentLinkedQueue<>();
+        private final AtomicInteger invocations = new AtomicInteger();
+
+        private StubExecutor(TestRun... values) {
+            for (TestRun value : values) {
+                runs.add(value);
+            }
+        }
+
+        @Override
+        public TestRun runTests(Path projectRoot, long timeoutMillis) {
+            invocations.incrementAndGet();
+            timeouts.add(timeoutMillis);
+            return runs.remove();
+        }
+    }
+
+    private static final class StubCoverageRunner extends CoverageRunner {
+        private final CoverageRun run;
+
+        private StubCoverageRunner(CoverageReport report) {
+            super(new ProcessCommandExecutor());
+            this.run = new CoverageRun(new TestRun(0, "baseline ok", 10, false), report);
+        }
+
+        private StubCoverageRunner(TestRun baseline, CoverageReport report) {
+            super(new ProcessCommandExecutor());
+            this.run = new CoverageRun(baseline, report);
+        }
+
+        @Override
+        CoverageRun generateCoverage(Path projectRoot) {
+            return run;
+        }
+    }
+
+    private static final class NoOpProgressReporter implements ProgressReporter {
+
+        @Override
+        public void runStarting(int totalMutations, int workerCount) {
+        }
+
+        @Override
+        public void mutationStarting(int workerIndex, MutationJob job) {
+        }
+
+        @Override
+        public void mutationFinished(int workerIndex, MutationResult result) {
+        }
+    }
+}
