@@ -3,7 +3,6 @@ package mutate4java;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -20,8 +19,7 @@ class CoverageRunner {
     CoverageRun generateCoverage(Path projectRoot) throws Exception {
         Path jacocoDir = projectRoot.resolve("target/site/jacoco");
         Path jacocoExec = projectRoot.resolve("target/jacoco.exec");
-        deleteIfExists(jacocoDir);
-        deleteIfExists(jacocoExec);
+        deleteStaleCoverage(jacocoDir, jacocoExec);
 
         CommandResult result = executor.run(List.of(
                 "mvn", "-q",
@@ -38,23 +36,32 @@ class CoverageRunner {
         );
     }
 
-    private void deleteIfExists(Path path) throws IOException {
-        if (!Files.exists(path)) {
+    private void deleteStaleCoverage(Path jacocoDir, Path jacocoExec) throws IOException {
+        deleteTreeIfPresent(jacocoDir);
+        deleteFileIfPresent(jacocoExec);
+    }
+
+    private void deleteTreeIfPresent(Path path) throws IOException {
+        if (!Files.isDirectory(path)) {
             return;
         }
-        if (Files.isDirectory(path)) {
-            try (var walk = Files.walk(path)) {
-                walk.sorted(Comparator.reverseOrder())
-                        .forEach(current -> {
-                            try {
-                                Files.deleteIfExists(current);
-                            } catch (IOException ex) {
-                                throw new IllegalStateException("Failed deleting stale coverage: " + current, ex);
-                            }
-                        });
-            }
-            return;
+        try (var walk = Files.walk(path)) {
+            walk.sorted(java.util.Comparator.reverseOrder())
+                    .forEach(this::deletePath);
         }
-        Files.deleteIfExists(path);
+    }
+
+    private void deleteFileIfPresent(Path path) throws IOException {
+        if (Files.isRegularFile(path)) {
+            Files.deleteIfExists(path);
+        }
+    }
+
+    private void deletePath(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Failed deleting stale coverage: " + path, ex);
+        }
     }
 }

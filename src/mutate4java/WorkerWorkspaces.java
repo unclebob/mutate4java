@@ -19,19 +19,34 @@ record WorkerWorkspaces(Path runRoot, List<Path> workerRoots) implements AutoClo
         if (!Files.exists(runRoot)) {
             return;
         }
+        IOException failure = deleteWithRetries(runRoot);
+        if (failure != null) {
+            throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, failure);
+        }
+    }
+
+    private static IOException deleteWithRetries(Path runRoot) {
         IOException failure = null;
         for (int attempt = 1; attempt <= DELETE_RETRIES; attempt++) {
-            try {
-                deleteTree(runRoot);
-                return;
-            } catch (DirectoryNotEmptyException ex) {
-                failure = ex;
-                sleepBeforeRetry();
-            } catch (IOException ex) {
-                throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, ex);
+            failure = tryDelete(runRoot);
+            if (failure == null) {
+                return null;
             }
+            if (!(failure instanceof DirectoryNotEmptyException)) {
+                throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, failure);
+            }
+            sleepBeforeRetry();
         }
-        throw new IllegalStateException("Failed deleting worker workspace: " + runRoot, failure);
+        return failure;
+    }
+
+    private static IOException tryDelete(Path runRoot) {
+        try {
+            deleteTree(runRoot);
+            return null;
+        } catch (IOException ex) {
+            return ex;
+        }
     }
 
     private static void deleteTree(Path root) throws IOException {

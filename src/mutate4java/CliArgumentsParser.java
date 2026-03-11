@@ -14,48 +14,51 @@ final class CliArgumentsParser {
     }
 
     static CliArguments parse(String[] args) {
-        boolean help = false;
-        boolean verbose = false;
-        Set<Integer> lines = Set.of();
-        int timeoutFactor = DEFAULT_TIMEOUT_FACTOR;
-        int maxWorkers = DEFAULT_MAX_WORKERS;
-        List<String> values = new ArrayList<>();
-
+        ParseState state = new ParseState();
         for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
-            switch (arg) {
-                case "--help" -> help = true;
-                case "--verbose" -> verbose = true;
-                case "--lines" -> {
-                    i++;
-                    ensureHasValue(args, i, "--lines");
-                    lines = parseLines(args[i]);
-                }
-                case "--timeout-factor" -> {
-                    i++;
-                    ensureHasValue(args, i, "--timeout-factor");
-                    timeoutFactor = parsePositiveInt(args[i], "--timeout-factor");
-                }
-                case "--max-workers" -> {
-                    i++;
-                    ensureHasValue(args, i, "--max-workers");
-                    maxWorkers = parsePositiveInt(args[i], "--max-workers");
-                }
-                default -> {
-                    if (arg.startsWith("--")) {
-                        throw new IllegalArgumentException("Unknown option: " + arg);
-                    }
-                    values.add(arg);
-                }
-            }
+            i = parseArgument(args, i, state);
         }
-
-        if (help) {
-            return new CliArguments(CliMode.HELP, List.of(), Set.of(), timeoutFactor, maxWorkers, verbose);
+        if (state.help) {
+            return new CliArguments(CliMode.HELP, List.of(), Set.of(), state.timeoutFactor, state.maxWorkers, state.verbose);
         }
+        ensureExactlyOneJavaFile(state.values);
+        return new CliArguments(
+                CliMode.EXPLICIT_FILES,
+                List.copyOf(state.values),
+                state.lines,
+                state.timeoutFactor,
+                state.maxWorkers,
+                state.verbose
+        );
+    }
 
-        ensureExactlyOneJavaFile(values);
-        return new CliArguments(CliMode.EXPLICIT_FILES, List.copyOf(values), lines, timeoutFactor, maxWorkers, verbose);
+    private static int parseArgument(String[] args, int index, ParseState state) {
+        String arg = args[index];
+        return switch (arg) {
+            case "--help" -> state.help(index);
+            case "--verbose" -> state.verbose(index);
+            case "--lines" -> parseFlagValue(args, index, "--lines", value -> state.lines(parseLines(value)));
+            case "--timeout-factor" -> parseFlagValue(args, index, "--timeout-factor",
+                    value -> state.timeoutFactor(parsePositiveInt(value, "--timeout-factor")));
+            case "--max-workers" -> parseFlagValue(args, index, "--max-workers",
+                    value -> state.maxWorkers(parsePositiveInt(value, "--max-workers")));
+            default -> addFileArgument(arg, index, state);
+        };
+    }
+
+    private static int parseFlagValue(String[] args, int index, String flag, java.util.function.Consumer<String> consumer) {
+        int valueIndex = index + 1;
+        ensureHasValue(args, valueIndex, flag);
+        consumer.accept(args[valueIndex]);
+        return valueIndex;
+    }
+
+    private static int addFileArgument(String arg, int index, ParseState state) {
+        if (arg.startsWith("--")) {
+            throw new IllegalArgumentException("Unknown option: " + arg);
+        }
+        state.values.add(arg);
+        return index;
     }
 
     private static void ensureHasValue(String[] args, int index, String flag) {
@@ -99,6 +102,37 @@ final class CliArgumentsParser {
         }
         if (!values.get(0).endsWith(".java")) {
             throw new IllegalArgumentException("mutate4java target must be a .java file");
+        }
+    }
+
+    private static final class ParseState {
+        private boolean help;
+        private boolean verbose;
+        private Set<Integer> lines = Set.of();
+        private int timeoutFactor = DEFAULT_TIMEOUT_FACTOR;
+        private int maxWorkers = DEFAULT_MAX_WORKERS;
+        private final List<String> values = new ArrayList<>();
+
+        private int help(int index) {
+            help = true;
+            return index;
+        }
+
+        private int verbose(int index) {
+            verbose = true;
+            return index;
+        }
+
+        private void lines(Set<Integer> value) {
+            lines = value;
+        }
+
+        private void timeoutFactor(int value) {
+            timeoutFactor = value;
+        }
+
+        private void maxWorkers(int value) {
+            maxWorkers = value;
         }
     }
 }

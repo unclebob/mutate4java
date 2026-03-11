@@ -105,4 +105,52 @@ class CliArgumentsParserTest {
 
         assertEquals("--max-workers must be a positive integer", error.getMessage());
     }
+
+    @Test
+    void rejectsUnknownOption() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--bogus"}));
+
+        assertEquals("Unknown option: --bogus", error.getMessage());
+    }
+
+    @Test
+    void rejectsMissingLinesValue() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--lines"}));
+
+        assertEquals("--lines requires a value", error.getMessage());
+    }
+
+    @Test
+    void rejectsBlankLinesValue() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--lines", ",,"}));
+
+        assertEquals("--lines requires at least one line number", error.getMessage());
+    }
+
+    @Test
+    void rejectsNonNumericLinesValue() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--lines", "a"}));
+
+        assertEquals("--lines must be a positive integer", error.getMessage());
+    }
+
+    @Test
+    void rejectsMissingTimeoutFactorValue() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--timeout-factor"}));
+
+        assertEquals("--timeout-factor requires a value", error.getMessage());
+    }
+
+    @Test
+    void rejectsMissingMaxWorkersValue() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--max-workers"}));
+
+        assertEquals("--max-workers requires a value", error.getMessage());
+    }
 }
