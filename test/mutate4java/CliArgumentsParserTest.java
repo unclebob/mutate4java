@@ -1,5 +1,20 @@
 package mutate4java;
 
+import mutate4java.project.*;
+import mutate4java.report.*;
+
+import mutate4java.model.*;
+
+import mutate4java.cli.*;
+import mutate4java.engine.*;
+
+import mutate4java.selection.*;
+
+import mutate4java.analysis.*;
+import mutate4java.coverage.*;
+import mutate4java.exec.*;
+import mutate4java.manifest.*;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,6 +41,7 @@ class CliArgumentsParserTest {
         assertEquals(List.of("src/main/java/demo/App.java"), parsed.fileArgs());
         assertEquals(Set.of(), parsed.lines());
         assertEquals(false, parsed.scan());
+        assertEquals(false, parsed.updateManifest());
         assertEquals(false, parsed.sinceLastRun());
         assertEquals(false, parsed.mutateAll());
         assertEquals(10, parsed.timeoutFactor());
@@ -71,6 +87,15 @@ class CliArgumentsParserTest {
         });
 
         assertEquals(true, parsed.scan());
+    }
+
+    @Test
+    void parsesUpdateManifestFlag() {
+        CliArguments parsed = CliArgumentsParser.parse(new String[]{
+                "src/main/java/demo/App.java", "--update-manifest"
+        });
+
+        assertEquals(true, parsed.updateManifest());
     }
 
     @Test
@@ -182,6 +207,38 @@ class CliArgumentsParserTest {
                 () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--scan", "--since-last-run"}));
 
         assertEquals("--scan may not be combined with --since-last-run", error.getMessage());
+    }
+
+    @Test
+    void rejectsScanCombinedWithUpdateManifest() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--scan", "--update-manifest"}));
+
+        assertEquals("--scan may not be combined with --update-manifest", error.getMessage());
+    }
+
+    @Test
+    void rejectsUpdateManifestCombinedWithSinceLastRun() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--update-manifest", "--since-last-run"}));
+
+        assertEquals("--update-manifest may not be combined with --since-last-run", error.getMessage());
+    }
+
+    @Test
+    void rejectsUpdateManifestCombinedWithMutateAll() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--update-manifest", "--mutate-all"}));
+
+        assertEquals("--update-manifest may not be combined with --mutate-all", error.getMessage());
+    }
+
+    @Test
+    void rejectsUpdateManifestCombinedWithLines() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> CliArgumentsParser.parse(new String[]{"src/main/java/demo/App.java", "--update-manifest", "--lines", "5"}));
+
+        assertEquals("--update-manifest may not be combined with --lines", error.getMessage());
     }
 
     @Test

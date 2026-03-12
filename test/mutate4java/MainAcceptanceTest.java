@@ -1,5 +1,20 @@
 package mutate4java;
 
+import mutate4java.project.*;
+import mutate4java.report.*;
+
+import mutate4java.model.*;
+
+import mutate4java.cli.*;
+import mutate4java.engine.*;
+
+import mutate4java.selection.*;
+
+import mutate4java.analysis.*;
+import mutate4java.coverage.*;
+import mutate4java.exec.*;
+import mutate4java.manifest.*;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -147,6 +162,23 @@ class MainAcceptanceTest {
         assertTrue(out.toString().contains("UNCOVERED src/main/java/demo/Covered.java:9 replace false with true"));
         assertTrue(out.toString().contains("Coverage: 1 uncovered sites skipped."));
         assertTrue(out.toString().contains("Summary: 1 killed, 0 survived, 1 total."));
+    }
+
+    @Test
+    void updatesManifestWithoutRunningProjectTests() throws Exception {
+        writeFailingProject(tempDir);
+        Path source = tempDir.resolve("src/main/java/demo/Flag.java");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+
+        int exit = Main.run(new String[]{"src/main/java/demo/Flag.java", "--update-manifest"}, tempDir,
+                new PrintStream(out), new PrintStream(err));
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Updated manifest for src/main/java/demo/Flag.java"));
+        assertEquals("", err.toString());
+        assertTrue(new ManifestSupport().read(source).isPresent());
+        assertTrue(Files.readString(source).contains("mutate4java-manifest"));
     }
 
     private void writePassingProject(Path root) throws Exception {

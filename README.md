@@ -31,6 +31,9 @@ java -jar target/mutate4java-0.1.0-SNAPSHOT.jar src/main/java/demo/Flag.java
 # Print a mutation-site scan without running tests
 java -jar target/mutate4java-0.1.0-SNAPSHOT.jar src/main/java/demo/Flag.java --scan
 
+# Write or refresh the embedded manifest without running tests
+java -jar target/mutate4java-0.1.0-SNAPSHOT.jar src/main/java/demo/Flag.java --update-manifest
+
 # Restrict mutation to specific lines
 java -jar target/mutate4java-0.1.0-SNAPSHOT.jar src/main/java/demo/Flag.java --lines 12,18
 
@@ -67,6 +70,9 @@ java -jar target/mutate4java-0.1.0-SNAPSHOT.jar --help
 - `--scan`
   Bypasses baseline, coverage, and mutant execution. It prints every discovered mutation site and marks changed scopes from the embedded manifest with `*`.
 
+- `--update-manifest`
+  Rewrites the embedded manifest for the requested file without running baseline tests, coverage, or mutants.
+
 - `--since-last-run`
   Restricts mutation to covered sites in declaration scopes that changed since the embedded manifest.
 
@@ -96,6 +102,7 @@ java -jar target/mutate4java-0.1.0-SNAPSHOT.jar --help
 - The tool accepts exactly one `.java` file target.
 - Directory-wide mutation is not supported.
 - Test sources are executed, but they are not mutation targets.
+- `--update-manifest` may not be combined with `--scan`, `--lines`, `--since-last-run`, or `--mutate-all`.
 - `--lines` may not be combined with `--since-last-run` or `--mutate-all`.
 - `--scan` may not be combined with `--since-last-run` or `--mutate-all`.
 - `--since-last-run` may not be combined with `--mutate-all`.
@@ -150,6 +157,8 @@ With no explicit selection flags:
 - if a manifest exists and the module hash changed, it mutates only sites inside changed scopes
 
 This makes repeated mutation runs cheaper on large files without relying on git.
+
+`--update-manifest` is the manual version of that write step. It refreshes the embedded manifest from the current source analysis even if the module's tests are red, because it does not run them.
 
 ## Scan Mode
 

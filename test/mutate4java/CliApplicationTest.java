@@ -1,5 +1,20 @@
 package mutate4java;
 
+import mutate4java.project.*;
+import mutate4java.report.*;
+
+import mutate4java.model.*;
+
+import mutate4java.cli.*;
+import mutate4java.engine.*;
+
+import mutate4java.selection.*;
+
+import mutate4java.analysis.*;
+import mutate4java.coverage.*;
+import mutate4java.exec.*;
+import mutate4java.manifest.*;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -81,6 +96,24 @@ class CliApplicationTest {
         assertEquals(0, executor.invocations.get());
         assertEquals(0, coverageRunner.invocations.get());
         assertEquals(originalSource(), strippedSource(file));
+    }
+
+    @Test
+    void updatesManifestWithoutRunningCoverageOrMutants() throws Exception {
+        Path file = writeSourceFile();
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of()));
+        StubExecutor executor = new StubExecutor();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file), "--update-manifest"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Updated manifest for src/main/java/demo/Sample.java"));
+        assertEquals(0, executor.invocations.get());
+        assertEquals(0, coverageRunner.invocations.get());
+        assertEquals(originalSource(), strippedSource(file));
+        assertTrue(manifestSupport.read(file).isPresent());
     }
 
     @Test
@@ -552,7 +585,7 @@ class CliApplicationTest {
         }
 
         @Override
-        CoverageRun generateCoverage(Path projectRoot) {
+        public CoverageRun generateCoverage(Path projectRoot) {
             invocations.incrementAndGet();
             return run;
         }
