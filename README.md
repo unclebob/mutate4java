@@ -127,7 +127,7 @@ If every discovered site is uncovered, no mutants are executed.
 When `--max-workers` is greater than `1`, `mutate4java` creates isolated worker copies of the owning Maven module under:
 
 ```text
-target/mutation-workers/worker-N/
+target/mutation-workers/run-<uuid>/worker-N/
 ```
 
 Each worker:
