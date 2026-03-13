@@ -42,7 +42,7 @@ final class ExecutionOutcomeWriter {
         if (summary.results().isEmpty()) {
             manifestWriter.write(summary.sourceFile(), analysis);
             out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(),
-                    summary.surfaceArea(), summary.uncovered(), List.of()));
+                    summary.uncovered(), List.of()));
             return 0;
         }
 
@@ -51,19 +51,19 @@ final class ExecutionOutcomeWriter {
             manifestWriter.write(summary.sourceFile(), analysis);
         }
         out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(),
-                summary.surfaceArea(), summary.uncovered(), summary.results()));
+                summary.uncovered(), summary.results()));
         return exit;
     }
 }
 
 /* mutate4java-manifest
 version=1
-moduleHash=8b7a7723dd4066f26c334a4608daa0c93cece7fb6e28fd5457f20764c4d5070f
+moduleHash=ec972de5575a2639d8e3e5bb33c92c4270db650c1366397db572dbf6b459ae20
 scope.0.id=Y2xhc3M6RXhlY3V0aW9uT3V0Y29tZVdyaXRlciNFeGVjdXRpb25PdXRjb21lV3JpdGVyOjI3
 scope.0.kind=class
 scope.0.startLine=27
 scope.0.endLine=57
-scope.0.semanticHash=5aeec0ac719f7d7ae6452e9bc73e1f48e134c0ef5aeaf7c7b028eace012e17a0
+scope.0.semanticHash=78879c1fcf140afa027a1e59b99f366150a7ac2e077d4ec7f2d7ecf50c9bd4a2
 scope.1.id=ZmllbGQ6RXhlY3V0aW9uT3V0Y29tZVdyaXRlciNmb3JtYXR0ZXI6MzE
 scope.1.kind=field
 scope.1.startLine=31
@@ -93,5 +93,5 @@ scope.6.id=bWV0aG9kOkV4ZWN1dGlvbk91dGNvbWVXcml0ZXIjd3JpdGUoMik6NDE
 scope.6.kind=method
 scope.6.startLine=41
 scope.6.endLine=56
-scope.6.semanticHash=382d13424e3678d331a6a88cccf641f443df487b7572ae99b15333be64f80640
+scope.6.semanticHash=71ef8fbbec76601ebd7625bdc87fe4de633f0e5458d20e2f1b134dd0d5815abc
 */

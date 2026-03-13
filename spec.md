@@ -10,6 +10,7 @@ It shall:
 - discover mutation sites in that file from the Java AST
 - optionally use an embedded manifest to restrict work to changed declaration scopes
 - optionally use line coverage to skip uncovered mutation sites
+- print differential diagnostics before worker execution
 - execute tests against each selected mutant
 - report killed, survived, timed-out, and uncovered mutation sites
 - update the embedded manifest after successful clean runs
@@ -243,6 +244,11 @@ When `--lines` is provided:
 
 - only sites on those lines shall be selected
 
+For differential runs, the tool shall distinguish:
+
+- mutations in scopes not registered in the manifest
+- mutations in scopes that were registered but whose semantic hash changed
+
 ## 9. Coverage
 
 By default, the tool shall generate JaCoCo coverage during the baseline run.
@@ -322,10 +328,26 @@ If a mutant times out:
 The report shall include:
 
 - baseline duration
+- a pre-worker diagnostics block
 - optional warning text
 - uncovered site lines
 - one line per mutant result
 - summary counts for killed, survived, and total executed mutants
+
+The pre-worker diagnostics block shall include:
+
+- total mutation sites
+- covered mutation sites
+- uncovered mutation sites
+- changed mutation sites
+- whether a manifest exists
+- whether the module hash changed
+- differential surface area
+- manifest-violating surface area
+
+`Differential surface area` shall mean the count of selected mutations in scopes not registered in the manifest.
+
+`Manifest-violating surface area` shall mean the count of selected mutations in scopes that were registered in the manifest but whose semantic hash changed.
 
 ### 13.2 Scan Output
 

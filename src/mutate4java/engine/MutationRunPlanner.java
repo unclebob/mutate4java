@@ -49,25 +49,25 @@ final class MutationRunPlanner {
         String extra = messages.extraText(parsed, differentialSelection, coverageSelection);
         if (coverageSelection.covered().isEmpty()) {
             return new MutantResultSummary(context.sourceFile(), baseline, extra,
-                    differentialSelection.surfaceArea(), coverageSelection.uncovered(), List.of());
+                    coverageSelection.uncovered(), List.of());
         }
 
         long timeoutMillis = mutationExecution.timeoutMillis(baseline.durationMillis(), parsed.timeoutFactor());
         List<MutationResult> results = mutationExecution.run(context.moduleRoot(), coverageSelection.covered(),
                 timeoutMillis, parsed.maxWorkers(), context.progressReporter(), context.executor());
         return new MutantResultSummary(context.sourceFile(), baseline, extra,
-                differentialSelection.surfaceArea(), coverageSelection.uncovered(), results);
+                coverageSelection.uncovered(), results);
     }
 }
 
 /* mutate4java-manifest
 version=1
-moduleHash=ad031bc2c36ea17568ead7707b96108e9c329df67b7bc090d0ea7eb29af64e12
+moduleHash=59d3ed4406bd68556d2af6e001082f0baacb89f93ba4815a65949f698544f221
 scope.0.id=Y2xhc3M6TXV0YXRpb25SdW5QbGFubmVyI011dGF0aW9uUnVuUGxhbm5lcjoyNQ
 scope.0.kind=class
 scope.0.startLine=25
 scope.0.endLine=61
-scope.0.semanticHash=99e57bc703d036384b936c168850b0e8bfe4396c05e0404ec407ffd44004051d
+scope.0.semanticHash=f81408d5235e3370381ca507765bbdaa1bdcf28fc34d2dfc52bfd41b2bdd90ac
 scope.1.id=ZmllbGQ6TXV0YXRpb25SdW5QbGFubmVyI2NvdmVyYWdlRmlsdGVyOjI4
 scope.1.kind=field
 scope.1.startLine=28
@@ -102,5 +102,5 @@ scope.7.id=bWV0aG9kOk11dGF0aW9uUnVuUGxhbm5lciNydW4oNCk6NDU
 scope.7.kind=method
 scope.7.startLine=45
 scope.7.endLine=60
-scope.7.semanticHash=b80ac97fcab73c12fdac3d51450528838be7aeb34053402724684b25f52db1cc
+scope.7.semanticHash=2548f2446bc7deb23d1054074e398154291c4c4032b4448ad141d614705ae9c7
 */

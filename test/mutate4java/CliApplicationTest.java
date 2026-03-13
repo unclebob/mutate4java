@@ -355,8 +355,15 @@ class CliApplicationTest {
                 .execute(new String[]{relative(file), "--since-last-run"});
 
         assertEquals(0, exit);
+        assertTrue(out.toString().contains("Total mutation sites: 2"));
+        assertTrue(out.toString().contains("Covered mutation sites: 0"));
+        assertTrue(out.toString().contains("Uncovered mutation sites: 0"));
+        assertTrue(out.toString().contains("Changed mutation sites: 0"));
+        assertTrue(out.toString().contains("Manifest exists: true"));
+        assertTrue(out.toString().contains("Module hash changed: false"));
+        assertTrue(out.toString().contains("Differential surface area: 0"));
+        assertTrue(out.toString().contains("Manifest-violating surface area: 0"));
         assertTrue(out.toString().contains("No mutations need testing."));
-        assertTrue(out.toString().contains("Surface area of the change: 0 unregistered mutations, 0 manifest-violating mutations."));
         assertEquals(0, executor.invocations.get());
     }
 
@@ -398,7 +405,14 @@ class CliApplicationTest {
                 .execute(new String[]{relative(file), "--since-last-run"});
 
         assertEquals(0, exit);
-        assertTrue(out.toString().contains("Surface area of the change: 1 unregistered mutation, 1 manifest-violating mutation."));
+        assertTrue(out.toString().contains("Total mutation sites: 3"));
+        assertTrue(out.toString().contains("Covered mutation sites: 2"));
+        assertTrue(out.toString().contains("Uncovered mutation sites: 0"));
+        assertTrue(out.toString().contains("Changed mutation sites: 2"));
+        assertTrue(out.toString().contains("Manifest exists: true"));
+        assertTrue(out.toString().contains("Module hash changed: true"));
+        assertTrue(out.toString().contains("Differential surface area: 1"));
+        assertTrue(out.toString().contains("Manifest-violating surface area: 1"));
         assertTrue(out.toString().contains("Summary: 2 killed, 0 survived, 2 total."));
     }
 

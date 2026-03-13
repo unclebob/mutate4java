@@ -17,6 +17,7 @@ For a requested Java source file, `mutate4java`:
 - filters out uncovered mutation sites using the JaCoCo XML report
 - applies each covered mutation
 - reruns `mvn test` for each mutant
+- prints a differential diagnostics block before running workers
 - reports killed and survived mutants in source order
 - writes an embedded manifest footer after successful clean runs
 
@@ -216,12 +217,33 @@ Typical output looks like this:
 
 ```text
 Baseline tests passed in 4666 ms.
+Total mutation sites: 12
+Covered mutation sites: 3
+Uncovered mutation sites: 1
+Changed mutation sites: 2
+Manifest exists: true
+Module hash changed: true
+Differential surface area: 1
+Manifest-violating surface area: 1
 WARNING: Found 72 mutations. Consider splitting this module.
 KILLED src/main/java/demo/Flag.java:5 replace true with false (4686 ms)
 UNCOVERED src/main/java/demo/Flag.java:12 replace == with !=
 Coverage: 1 uncovered sites skipped.
 Summary: 1 killed, 0 survived, 1 total.
 ```
+
+The differential diagnostics block is printed before worker execution. It reports:
+
+- total mutation sites discovered in the file
+- covered mutation sites selected for execution
+- uncovered mutation sites skipped by coverage
+- changed mutation sites selected by differential analysis
+- whether an embedded manifest exists
+- whether the module hash changed relative to the manifest
+- differential surface area
+- manifest-violating surface area
+
+`Differential surface area` counts mutations in scopes that were not registered in the manifest. `Manifest-violating surface area` counts mutations in scopes that were registered but whose semantic hash changed.
 
 Exit codes:
 

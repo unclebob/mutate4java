@@ -31,11 +31,11 @@ final class ChangedScopeFinder {
     ChangedScopes changedScopes(Path sourceFile, SourceAnalysis analysis) throws Exception {
         var manifest = manifestSupport.read(sourceFile);
         if (manifest.isEmpty()) {
-            return new ChangedScopes(false, Set.of(), Set.of());
+            return new ChangedScopes(false, false, Set.of(), Set.of());
         }
         DifferentialManifest previous = manifest.get();
         if (previous.moduleHash().equals(analysis.moduleHash())) {
-            return new ChangedScopes(true, Set.of(), Set.of());
+            return new ChangedScopes(true, false, Set.of(), Set.of());
         }
         Map<String, String> previousHashes = new LinkedHashMap<>();
         for (MutationScope scope : previous.scopes()) {
@@ -51,18 +51,18 @@ final class ChangedScopeFinder {
                 manifestViolations.add(scope.id());
             }
         }
-        return new ChangedScopes(true, Set.copyOf(unregisteredScopes), Set.copyOf(manifestViolations));
+        return new ChangedScopes(true, true, Set.copyOf(unregisteredScopes), Set.copyOf(manifestViolations));
     }
 }
 
 /* mutate4java-manifest
 version=1
-moduleHash=631d26e2315dd7afcf8dcbf7d56780579f051759ba3bc0b9cf56d1530289640f
+moduleHash=f38382c7e6832e47396ce3eee5cb4b66885d3530a31b5ced253a6076e2b07421
 scope.0.id=Y2xhc3M6Q2hhbmdlZFNjb3BlRmluZGVyI0NoYW5nZWRTY29wZUZpbmRlcjoyMw
 scope.0.kind=class
 scope.0.startLine=23
 scope.0.endLine=56
-scope.0.semanticHash=fe48a04546a48ac665dbfc4b98058096ea08810cd5d38ef6b1c98c731786c140
+scope.0.semanticHash=2d845f821a6cf403e5d2de714db89be8a7bbf29e650af01fe24f8a5e6692fb6a
 scope.1.id=ZmllbGQ6Q2hhbmdlZFNjb3BlRmluZGVyI21hbmlmZXN0U3VwcG9ydDoyNQ
 scope.1.kind=field
 scope.1.startLine=25
@@ -72,7 +72,7 @@ scope.2.id=bWV0aG9kOkNoYW5nZWRTY29wZUZpbmRlciNjaGFuZ2VkU2NvcGVzKDIpOjMx
 scope.2.kind=method
 scope.2.startLine=31
 scope.2.endLine=55
-scope.2.semanticHash=07847d4c0bb5ff4a1523bde5fa195dc18317a4a7490c2d2ed5bfa0e8ca588e06
+scope.2.semanticHash=847d110df02628ef9d7f1b3a28a471acdcd87c75a081b1ebd01cfc895837834c
 scope.3.id=bWV0aG9kOkNoYW5nZWRTY29wZUZpbmRlciNjdG9yKDEpOjI3
 scope.3.kind=method
 scope.3.startLine=27
