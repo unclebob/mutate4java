@@ -41,7 +41,8 @@ final class ExecutionOutcomeWriter {
     int write(MutantResultSummary summary, SourceAnalysis analysis) throws Exception {
         if (summary.results().isEmpty()) {
             manifestWriter.write(summary.sourceFile(), analysis);
-            out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(), summary.uncovered(), List.of()));
+            out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(),
+                    summary.surfaceArea(), summary.uncovered(), List.of()));
             return 0;
         }
 
@@ -49,19 +50,20 @@ final class ExecutionOutcomeWriter {
         if (exit == 0) {
             manifestWriter.write(summary.sourceFile(), analysis);
         }
-        out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(), summary.uncovered(), summary.results()));
+        out.print(formatter.format(workspaceRoot, summary.baseline(), summary.extra(),
+                summary.surfaceArea(), summary.uncovered(), summary.results()));
         return exit;
     }
 }
 
 /* mutate4java-manifest
 version=1
-moduleHash=235212e58089f84e3d2654a229c39f51ecb90e26426d71265373f75582023bec
+moduleHash=8b7a7723dd4066f26c334a4608daa0c93cece7fb6e28fd5457f20764c4d5070f
 scope.0.id=Y2xhc3M6RXhlY3V0aW9uT3V0Y29tZVdyaXRlciNFeGVjdXRpb25PdXRjb21lV3JpdGVyOjI3
 scope.0.kind=class
 scope.0.startLine=27
-scope.0.endLine=55
-scope.0.semanticHash=d04f1431f754bf4a62b285b508f896d3aac5ee039b8a0b4c9ec753182ef06701
+scope.0.endLine=57
+scope.0.semanticHash=5aeec0ac719f7d7ae6452e9bc73e1f48e134c0ef5aeaf7c7b028eace012e17a0
 scope.1.id=ZmllbGQ6RXhlY3V0aW9uT3V0Y29tZVdyaXRlciNmb3JtYXR0ZXI6MzE
 scope.1.kind=field
 scope.1.startLine=31
@@ -90,6 +92,6 @@ scope.5.semanticHash=9360e39dc4f1a8fe94c44e30eb7c52608cc44674afd5b7f3e7f02b90a2d
 scope.6.id=bWV0aG9kOkV4ZWN1dGlvbk91dGNvbWVXcml0ZXIjd3JpdGUoMik6NDE
 scope.6.kind=method
 scope.6.startLine=41
-scope.6.endLine=54
-scope.6.semanticHash=d0bee98f346fe56824b5d91dc77a102a3b830c4b8d1e8cd5a17f7d7298921151
+scope.6.endLine=56
+scope.6.semanticHash=382d13424e3678d331a6a88cccf641f443df487b7572ae99b15333be64f80640
 */

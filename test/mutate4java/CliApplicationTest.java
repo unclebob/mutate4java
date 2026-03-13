@@ -356,7 +356,50 @@ class CliApplicationTest {
 
         assertEquals(0, exit);
         assertTrue(out.toString().contains("No mutations need testing."));
+        assertTrue(out.toString().contains("Surface area of the change: 0 unregistered mutations, 0 manifest-violating mutations."));
         assertEquals(0, executor.invocations.get());
+    }
+
+    @Test
+    void reportsSurfaceAreaForUnregisteredAndManifestViolatingScopes() throws Exception {
+        Path file = writeSourceFile();
+        SourceAnalysis manifestBaseline = new MutationCatalog().analyze(file);
+        String changedSource = """
+                package demo;
+
+                class Sample {
+                    boolean truthy() {
+                        return false;
+                    }
+
+                    boolean same(int left, int right) {
+                        return left == right;
+                    }
+
+                    boolean brandNew() {
+                        return true;
+                    }
+                }
+                """;
+        manifestSupport.write(file,
+                changedSource,
+                new DifferentialManifest(1, manifestBaseline.moduleHash(), manifestBaseline.scopes()));
+        StubCoverageRunner coverageRunner = new StubCoverageRunner(new CoverageReport(Set.of(
+                new CoverageSite("demo/Sample.java", 5),
+                new CoverageSite("demo/Sample.java", 13)
+        )));
+        StubExecutor executor = new StubExecutor(
+                new TestRun(1, "killed", 5, false),
+                new TestRun(1, "killed", 6, false)
+        );
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int exit = application(out, new ByteArrayOutputStream(), executor, coverageRunner)
+                .execute(new String[]{relative(file), "--since-last-run"});
+
+        assertEquals(0, exit);
+        assertTrue(out.toString().contains("Surface area of the change: 1 unregistered mutation, 1 manifest-violating mutation."));
+        assertTrue(out.toString().contains("Summary: 2 killed, 0 survived, 2 total."));
     }
 
     @Test
